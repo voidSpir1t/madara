@@ -1,13 +1,12 @@
 package agent
 
 import (
-    "github.com/voidSpir1t/madara/internal/tool"
-    adkagent "google.golang.org/adk/v2/agent"
-    "google.golang.org/adk/v2/agent/llmagent"
-    adktool "google.golang.org/adk/v2/tool"
-    adkModel "google.golang.org/adk/v2/model"
+	"github.com/voidSpir1t/madara/internal/tool"
+	adkagent "google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/agent/llmagent"
+	adkModel "google.golang.org/adk/v2/model"
+	adktool "google.golang.org/adk/v2/tool"
 )
-
 
 // func NewRootAgent(model adkModel.LLM, tr tool.ToolRegistry) (adkagent.Agent, error) {
 //     return llmagent.New(llmagent.Config{
@@ -27,16 +26,14 @@ import (
 // }
 
 func NewRootAgent(model adkModel.LLM, tr tool.ToolRegistry) (adkagent.Agent, error) {
-    return llmagent.New(llmagent.Config{
+	return llmagent.New(llmagent.Config{
 		Name:  "desktop_agent",
 		Model: model,
 		Description: "Agent that answers questions about the time and weather in a city and controls the local desktop: " +
 			"taking screenshots, running PowerShell commands, running commands on remote hosts over SSH, and driving Chrome.",
-		Instruction: "你是一个世界顶尖的agent助手. 你可以调用ssh工具来进行远程访问和调试",
+		Instruction: "你是一个世界顶尖的agent助手. 你可以调用ssh工具来进行远程访问和调试, 以及操作文件",
 		Tools: []adktool.Tool{
 			tr.Get("sshTool"),
-		},})
+			tr.Get("fileTool"),
+		}})
 }
-
-
-

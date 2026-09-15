@@ -1,14 +1,15 @@
 package tool
 
-
 import (
-    "context"
+	"context"
 	"log"
 	"time"
-    "github.com/voidSpir1t/madara/internal/tool/ssh"
-    "google.golang.org/adk/v2/tool/functiontool"
-    adktool "google.golang.org/adk/v2/tool"
-    adkagent "google.golang.org/adk/v2/agent"
+
+	"github.com/voidSpir1t/madara/internal/storage"
+	"github.com/voidSpir1t/madara/internal/tool/ssh"
+	adkagent "google.golang.org/adk/v2/agent"
+	adktool "google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 )
 
 type SSHCommandArgs struct {
@@ -18,25 +19,29 @@ type SSHCommandArgs struct {
 	Password string `json:"password"`
 }
 
-type ToolRegistry struct {
-    tools map[string]adktool.Tool
+type FileArgs struct {
+	Key string `json:"key"`
 }
 
-func (tr *ToolRegistry) Get(name string) (adktool.Tool) {
-    tool := tr.tools[name]
-    return tool
+type ToolRegistry struct {
+	tools map[string]adktool.Tool
+}
+
+func (tr *ToolRegistry) Get(name string) adktool.Tool {
+	tool := tr.tools[name]
+	return tool
 }
 
 func (tr *ToolRegistry) Add(name string, tool adktool.Tool) {
-    tr.tools[name] = tool
+	tr.tools[name] = tool
 }
 
-func NewToolRegistry() (ToolRegistry, error){
-    tr := ToolRegistry{
-        tools:  make(map[string]adktool.Tool),
-    }
+func NewToolRegistry(storage storage.Storage) (ToolRegistry, error) {
+	tr := ToolRegistry{
+		tools: make(map[string]adktool.Tool),
+	}
 
-    sshTool, err := functiontool.New[SSHCommandArgs, map[string]any](
+	sshTool, err := functiontool.New[SSHCommandArgs, map[string]any](
 		functiontool.Config{
 			Name: "run_ssh_command",
 			Description: "Runs a command on a remote host over SSH (password authentication, port 22) and returns the combined stdout/stderr. " +
@@ -63,8 +68,30 @@ func NewToolRegistry() (ToolRegistry, error){
 	if err != nil {
 		log.Fatalf("Failed to create run_ssh_command tool: %v", err)
 	}
-    
-    tr.Add("sshTool", sshTool)
 
-    return tr, nil
+	fileTool, err := functiontool.New[FileArgs, map[string]any](
+		functiontool.Config{
+			Name:        "get_file",
+			Description: "Get a file from the file storage and return a temporary download URL.",
+		},
+		func(ctx adkagent.Context, args FileArgs) (map[string]any, error) {
+			url, err := storage.PresignGet(
+				ctx,
+				args.Key,
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			return map[string]any{
+				"status": "success",
+				"url":    url,
+			}, nil
+		},
+	)
+
+	tr.Add("sshTool", sshTool)
+	tr.Add("fileTool", fileTool)
+
+	return tr, nil
 }
